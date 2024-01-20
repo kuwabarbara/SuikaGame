@@ -9,10 +9,9 @@ let FRUITS = FRUITS_BASE;
 
 let GeneratedImage="empty";
 let items="";
-let images = ['base/00_cherry.png', 'base/01_strawberry.png', 'base/02_grape.png',
- 'base/03_gyool.png', 'base/04_orange.png','base/05_apple.png', 'base/06_pear.png',
-  'base/07_peach.png', 'base/08_pineapple.png', 'base/09_melon.png','base/10_watermelon.png'];
-
+let images = ['base/0.png', 'base/1.png', 'base/02_grape.png',
+ 'base/3.png', 'base/4.png','base/5.png', 'base/6.png',
+  'base/7.png', 'base/8.png', 'base/9.png','base/10.png'];
 
 const engine = Engine.create();
 const render = Render.create({
@@ -104,11 +103,14 @@ async function generateImage(index, inputValue){
         body: JSON.stringify(data) // リクエストボディ
       })
       .then(response => response.json()) // レスポンスをJSON形式で取得
-      .then(data => {
+      .then(async data => {
         console.log(data); // レスポンスデータをコンソールに表示
         let urls = data.data.map(obj => obj.url);
         console.log(urls[0]);
-        images[index] = urls[0];
+        await fetch("http://localhost:5000/download_image", 
+        {method: "POST", body: new URLSearchParams(
+          {url: urls[0],index: index}),
+        })
       })
       .catch(error => {
         console.error('Error:', error); // エラーが発生した場合はコンソールに表示
@@ -124,6 +126,7 @@ async function generateItems(genre){
         "role": "system",
         "content": "List 11 items belonging to a given genre in ascending order. \
         do not include anything other than items belonging to the genre. \
+        if genre is not specified, the default is fruit. \
         Example: Fruits. In this case, the smallest fruit is cherry, \
         and the largest is watermelon, so the order is\
         Cherry<Strawberry<Grapes<Orange<Persimmon<Apple<Pear<Peach<Pineapple<Melon<Watermelon"
@@ -175,9 +178,9 @@ document.getElementById('submitButton').addEventListener('click', async function
   var inputValue = document.getElementById('inputField').value;
    await generateItems(inputValue);
    console.log(items);
+   items = items.replace(/>/g, "<");
    let itemsArray = items.split("<");
    itemsArray = itemsArray.slice(0,2); // TODO: API制限回避のため，最初に5個，1分後にもう5個，というようにする
-  // itemsArrayの中の要素全てをgenerateImageに入れて画像を生成する．promise.allを使う
    await Promise.all(itemsArray.map(async function(item, index){
      await generateImage(index, item);
    }));
@@ -212,6 +215,10 @@ window.onkeydown = (event) => {
     case "KeyD":
       if (interval)
         return;
+        fetch("http://localhost:5000/download_image", 
+        {method: "POST",body: new URLSearchParams(
+          {url: "https://oaidalleapiprodscus.blob.core.windows.net/private/org-Bw1rHVWULCh4tq4NFETZpXuc/user-LED88rKFquAPl9gSpidWoKaO/img-GydALBssEoNy0Qbfy6xdoy3m.png?st=2024-01-20T14%3A42%3A08Z&se=2024-01-20T16%3A42%3A08Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2024-01-19T19%3A37%3A42Z&ske=2024-01-20T19%3A37%3A42Z&sks=b&skv=2021-08-06&sig=ArGvxA0DtGf8tLc0S5PQExdBmMKFEWb14sZUiE1KXXQ%3D",index: "0"}),
+        })
 
       interval = setInterval(() => {
         if (currentBody.position.x + currentFruit.radius < 590)
