@@ -3,13 +3,6 @@ import { FRUITS_BASE } from "./fruits";
 import "./dark.css";
 import config from './config.json';
 
-//OpenAIを用いて、画像生成を行う
-
-
-
-
-
-
 let FRUITS = FRUITS_BASE;
 
 let GeneratedImage="empty";
@@ -73,8 +66,7 @@ function changeFruits() {
       console.log("changeFruits");
     }
   } catch (error) {
-    // エラーが発生した場合の処理
-    console.error('エラーが発生しました:', error);
+    // m,:', error);
   }
 }
 
@@ -97,20 +89,19 @@ function addFruit() {
   World.add(world, body);
 }
 
-function generateImage(inputValue){
-        // APIキーを変数に保存します。セキュリティ上の理由から、本番環境ではAPIキーを直接コードに記述することは避けてください。
+async function generateImage(inputValue){
       //const config = require('config.json');
       const OPENAI_API_KEY = config.api_key;
       console.log(inputValue);
       // APIリクエストのためのパラメータを設定します。
       const data = {
-        prompt: "Please generate a "+inputValue+" image",
+        prompt: inputValue+", emoji, white background",
         n: 1,
         size: "256x256"
       };
 
-      // fetch APIを使ってリクエストを送信します。
-      fetch('https://api.openai.com/v1/images/generations', {
+      // fetchの処理が終わるまで待機します。
+      await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST', // HTTPメソッド
         headers: {
           'Content-Type': 'application/json',
@@ -124,6 +115,7 @@ function generateImage(inputValue){
         let urls = data.data.map(obj => obj.url);
         console.log(urls[0]);
         GeneratedImage=urls[0];
+        alert("画像を生成しました");
       })
       .catch(error => {
         console.error('Error:', error); // エラーが発生した場合はコンソールに表示
@@ -131,12 +123,13 @@ function generateImage(inputValue){
 
 }
 
-document.getElementById('submitButton').addEventListener('click', function() {
+document.getElementById('submitButton').addEventListener('click', async function() {
   var inputValue = document.getElementById('inputField').value;
-  alert("入力された値: " + inputValue);
-  generateImage(inputValue);
-  //changeFruits(inputValue);
+  await generateImage(inputValue);
+  changeFruits(inputValue);
+  alert("画像を変更しました");
 });
+
 
 
 window.onkeydown = (event) => {
@@ -179,10 +172,6 @@ window.onkeydown = (event) => {
         addFruit();
         disableAction = false;
       }, 1000);
-      break;
-
-    case "KeyR":
-      changeFruits();
       break;
   }
 }
