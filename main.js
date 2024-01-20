@@ -3,9 +3,15 @@ import { FRUITS_BASE } from "./fruits";
 import "./dark.css";
 import config from './config.json';
 
+const OPENAI_API_KEY = config.api_key;
+
 let FRUITS = FRUITS_BASE;
 
 let GeneratedImage="empty";
+let items="";
+let images = ['base/00_cherry.png', 'base/01_strawberry.png', 'base/02_grape.png',
+ 'base/03_gyool.png', 'base/04_orange.png','base/05_apple.png', 'base/06_pear.png',
+  'base/07_peach.png', 'base/08_pineapple.png', 'base/09_melon.png','base/10_watermelon.png'];
 
 
 const engine = Engine.create();
@@ -56,18 +62,11 @@ let interval = null;
 
 //FRUITSの画像を生成したい画像に変更する
 function changeFruits() {
-  try {
-    if (GeneratedImage=="empty"){
-      console.log("empty");
-    }
-    else{
-      console.log(GeneratedImage);
-      FRUITS[0].name = GeneratedImage;
-      console.log("changeFruits");
-    }
-  } catch (error) {
-    // m,:', error);
-  }
+  console.log('yobidasi');
+  images.map((image, index) => {
+    console.log(image,index);
+    FRUITS[index].name = image;
+  });
 }
 
 function addFruit() {
@@ -89,9 +88,7 @@ function addFruit() {
   World.add(world, body);
 }
 
-async function generateImage(inputValue){
-      //const config = require('config.json');
-      const OPENAI_API_KEY = config.api_key;
+async function generateImage(index, inputValue){
       console.log(inputValue);
       // APIリクエストのためのパラメータを設定します。
       const data = {
@@ -114,19 +111,84 @@ async function generateImage(inputValue){
         console.log(data); // レスポンスデータをコンソールに表示
         let urls = data.data.map(obj => obj.url);
         console.log(urls[0]);
-        GeneratedImage=urls[0];
-        alert("画像を生成しました");
+        images[index] = urls[0];
       })
       .catch(error => {
         console.error('Error:', error); // エラーが発生した場合はコンソールに表示
       });
+}
 
+// GPT-3｀のAPIを使ってジャンルに含まれるアイテムを生成する
+async function generateItems(genre){
+  const data = {
+    model:"gpt-4-1106-preview",
+    "messages":[
+      {
+        "role": "system",
+        "content": "List 11 items belonging to a given genre in ascending order. \
+        do not include anything other than items belonging to the genre. \
+        Example: Fruits. In this case, the smallest fruit is cherry, \
+        and the largest is watermelon, so the order is\
+        Cherry<Strawberry<Grapes<Orange<Persimmon<Apple<Pear<Peach<Pineapple<Melon<Watermelon"
+      },
+      {
+        "role": "user",
+        "content": "動物"
+      },
+      {
+        "role": "assistant",
+        "content": "Ant<Bee<Turtle<Rabbit<Cat<Dog<Fox<Tiger<Bear<Elephant<Whale"
+      },
+      {
+        "role": "user",
+        "content": "国"
+      },
+      {
+        "role": "assistant",
+        "content": "Vatican City<Palau<Israel<Switzerland<South Korea<United Kingdom<New Zealand<Germany<Japan<United States<Russia"
+      },
+      {
+        "role": "user",
+        "content": genre
+      }
+    ]
+  };
+
+  // fetchの処理が終わるまで待機します。
+  await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST', // HTTPメソッド
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENAI_API_KEY}` // APIキーをヘッダーに含める
+    },
+    body: JSON.stringify(data) // リクエストボディ
+  })
+  .then(response => response.json()) // レスポンスをJSON形式で取得
+  .then(data => {
+    console.log(data); // レスポンスデータをコンソールに表示
+    items = data.choices[0].message.content;
+  })
+  .catch(error => {
+    console.error('Error:', error); // エラーが発生した場合はコンソールに表示
+  });
+  
 }
 
 document.getElementById('submitButton').addEventListener('click', async function() {
   var inputValue = document.getElementById('inputField').value;
-  await generateImage(inputValue);
-  changeFruits(inputValue);
+   await generateItems(inputValue);
+   console.log(items);
+   let itemsArray = items.split("<");
+   itemsArray = itemsArray.slice(0,2); // TODO: API制限回避のため，最初に5個，1分後にもう5個，というようにする
+   console.log(itemsArray);
+  // itemsArrayの中の要素全てをgenerateImageに入れて画像を生成する．promise.allを使う
+   await Promise.all(itemsArray.map(async function(item, index){
+     await generateImage(index, item);
+   }));
+   changeFruits();
+  
+  //await generateImage(inputValue);
+  //changeFruits(inputValue);
   alert("画像を変更しました");
 });
 
