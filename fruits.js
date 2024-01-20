@@ -1,6 +1,5 @@
 const FRUITS_BASE = [
   {
-    //name: "base/00_cherry",
     name: "base/00_cherry.png",
     radius: 33 / 2,
   },
