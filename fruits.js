@@ -45,5 +45,4 @@ const FRUITS_BASE = [
   },
 ];
 
-
-export { FRUITS_BASE, FRUITS_HLW };
+export { FRUITS_BASE};
