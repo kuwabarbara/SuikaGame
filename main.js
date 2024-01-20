@@ -62,9 +62,7 @@ let interval = null;
 
 //FRUITSの画像を生成したい画像に変更する
 function changeFruits() {
-  console.log('yobidasi');
   images.map((image, index) => {
-    console.log(image,index);
     FRUITS[index].name = image;
   });
 }
@@ -89,7 +87,6 @@ function addFruit() {
 }
 
 async function generateImage(index, inputValue){
-      console.log(inputValue);
       // APIリクエストのためのパラメータを設定します。
       const data = {
         prompt: inputValue+", emoji, white background",
@@ -180,7 +177,6 @@ document.getElementById('submitButton').addEventListener('click', async function
    console.log(items);
    let itemsArray = items.split("<");
    itemsArray = itemsArray.slice(0,2); // TODO: API制限回避のため，最初に5個，1分後にもう5個，というようにする
-   console.log(itemsArray);
   // itemsArrayの中の要素全てをgenerateImageに入れて画像を生成する．promise.allを使う
    await Promise.all(itemsArray.map(async function(item, index){
      await generateImage(index, item);
