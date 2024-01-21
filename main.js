@@ -13,6 +13,9 @@ let images = ['base/0.png', 'base/1.png', 'base/02_grape.png',
  'base/3.png', 'base/4.png','base/5.png', 'base/6.png',
   'base/7.png', 'base/8.png', 'base/9.png','base/10.png'];
 
+let vertCache = {};
+let textureCache = {};
+
 const engine = Engine.create();
 const render = Render.create({
   engine,
@@ -66,18 +69,40 @@ function changeFruits() {
   });
 }
 
+function loadAllImages() {
+  return Promise.all(FRUITS.map(async (fruit, index) => {
+    let info =  await createEmojiInfo(fruit.name);
+      vertCache[index] = info.vert;
+      textureCache[index] = info.texture;
+  }));
+}
+
 function addFruit() {
   const index = Math.floor(Math.random() * 5);
   const fruit = FRUITS[index];
-
-  const body = Bodies.circle(300, 50, fruit.radius, {
+  let body = null;
+  if (vertCache[index] === undefined) {
+    console.log('not cached');
+    body = Bodies.circle(300, 50, fruit.radius, {
+      index: index,
+      isSleeping: true,
+      render: {
+        sprite: { texture: `${fruit.name}` }
+      },
+      restitution: 0.2,
+    });
+  }
+  else {
+  body = Bodies.fromVertices(300, 50, vertCache[index], {
     index: index,
     isSleeping: true,
     render: {
-      sprite: { texture: `${fruit.name}` }
+        sprite: {
+            texture: textureCache[index]
+        }
     },
     restitution: 0.2,
-  });
+  })};
 
   currentBody = body;
   currentFruit = fruit;
@@ -88,7 +113,7 @@ function addFruit() {
 async function generateImage(index, inputValue){
       // APIリクエストのためのパラメータを設定します。
       const data = {
-        prompt: inputValue+", emoji, white background",
+        prompt: inputValue+", illustlation, emoji, white background",
         n: 1,
         size: "256x256"
       };
@@ -174,6 +199,102 @@ async function generateItems(genre){
   
 }
 
+function alphaToWhite(data8U) {
+  for (let i = 0; i < data8U.length; i += 4) {
+      if (data8U[i + 3] == 0) {
+          data8U[i] = 255;
+          data8U[i + 1] = 255;
+          data8U[i + 2] = 255;
+          data8U[i + 3] = 255;
+      }
+  }
+}
+function createEmojiInfo(imagepath) {
+  return new Promise((resolve, reject) => {
+      var img = new Image();
+      img.src = imagepath; // 画像への相対パス
+
+      img.onload = function() {
+          var canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+
+          let source = cv.imread(canvas);
+          alphaToWhite(source.data);
+
+          let destC1 = new cv.Mat(canvas.height, canvas.width, cv.CV_8UC1);
+          let destC4 = new cv.Mat(canvas.height, canvas.width, cv.CV_8UC4);
+
+          cv.cvtColor(source, destC1, cv.COLOR_RGBA2GRAY);
+          cv.threshold(destC1, destC4, 254, 255, cv.THRESH_BINARY);
+          cv.bitwise_not(destC4, destC4);
+
+          let contours = new cv.MatVector();
+          let hierarchy = new cv.Mat();
+          cv.findContours(destC4, contours, hierarchy, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE, { x: 0, y: 0});
+          hierarchy.delete();
+          destC1.delete();
+          destC4.delete();
+          source.delete();
+
+          let points = [];
+          for (let i = 0; i < contours.size(); i++) {
+              let d = contours.get(i).data32S;
+              for (let j = 0; j < d.length; j++) {
+                  points.push(d[j]);
+              }
+          }
+          contours.delete();
+
+          if (points.length < 3) {
+              reject(new Error('Not enough points in contours.'));
+              return;
+          }
+
+          let _points = new cv.Mat(1, points.length / 2, cv.CV_32SC2);
+          let d = _points.data32S;
+
+          for (let i = 0; i < points.length; i++) {
+              d[i] = points[i];
+          }
+          let hull = new cv.Mat();
+          cv.convexHull(_points, hull);
+          _points.delete();
+
+          let vert = [];
+          d = hull.data32S;
+          for (let i = 0; i < d.length; i += 2) {
+              vert.push({ x: d[i], y: d[i + 1]});
+          }
+          hull.delete();
+
+          const bounds = Matter.Bounds.create(vert);
+          const texture = createTexture(canvas, bounds);
+
+          resolve({
+              vert: vert,
+              texture: texture
+          });
+      };
+
+      img.onerror = function() {
+          reject(new Error('Image failed to load.'));
+      };
+  });
+}
+
+function createTexture(sourceCanvas, bounds) {
+  let canvas = document.createElement('canvas');
+  canvas.width = bounds.max.x - bounds.min.x + 1;
+  canvas.height = bounds.max.y - bounds.min.y + 1;
+
+  canvas.getContext('2d').drawImage(sourceCanvas, bounds.min.x, bounds.min.y, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL();
+}
+
+
 document.getElementById('submitButton').addEventListener('click', async function() {
   var inputValue = document.getElementById('inputField').value;
    await generateItems(inputValue);
@@ -185,9 +306,7 @@ document.getElementById('submitButton').addEventListener('click', async function
      await generateImage(index, item);
    }));
    changeFruits();
-  
-  //await generateImage(inputValue);
-  //changeFruits(inputValue);
+   await loadAllImages();
   alert("画像を変更しました");
 });
 
@@ -215,10 +334,6 @@ window.onkeydown = (event) => {
     case "KeyD":
       if (interval)
         return;
-        fetch("http://localhost:5000/download_image", 
-        {method: "POST",body: new URLSearchParams(
-          {url: "https://oaidalleapiprodscus.blob.core.windows.net/private/org-Bw1rHVWULCh4tq4NFETZpXuc/user-LED88rKFquAPl9gSpidWoKaO/img-GydALBssEoNy0Qbfy6xdoy3m.png?st=2024-01-20T14%3A42%3A08Z&se=2024-01-20T16%3A42%3A08Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2024-01-19T19%3A37%3A42Z&ske=2024-01-20T19%3A37%3A42Z&sks=b&skv=2021-08-06&sig=ArGvxA0DtGf8tLc0S5PQExdBmMKFEWb14sZUiE1KXXQ%3D",index: "0"}),
-        })
 
       interval = setInterval(() => {
         if (currentBody.position.x + currentFruit.radius < 590)
