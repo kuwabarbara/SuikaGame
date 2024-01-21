@@ -13,6 +13,7 @@ let images = ['base/00_cherry.png', 'base/01_strawberry.png', 'base/02_grape.png
  'base/03_gyool.png', 'base/04_orange.png','base/05_apple.png', 'base/06_pear.png',
   'base/07_peach.png', 'base/08_pineapple.png', 'base/09_melon.png','base/10_watermelon.png'];
 
+let flagGenerate=false;
 
 const engine = Engine.create();
 const render = Render.create({
@@ -69,6 +70,7 @@ function changeFruits() {
 
 function addFruit() {
   const index = Math.floor(Math.random() * 5);
+  //let index = 0;
   const fruit = FRUITS[index];
 
   const body = Bodies.circle(300, 50, fruit.radius, {
@@ -176,7 +178,7 @@ document.getElementById('submitButton').addEventListener('click', async function
    await generateItems(inputValue);
    console.log(items);
    let itemsArray = items.split("<");
-   itemsArray = itemsArray.slice(0,2); // TODO: API制限回避のため，最初に5個，1分後にもう5個，というようにする
+   itemsArray = itemsArray.slice(0,5); // TODO: API制限回避のため，最初に5個，1分後にもう5個，というようにする
   // itemsArrayの中の要素全てをgenerateImageに入れて画像を生成する．promise.allを使う
    await Promise.all(itemsArray.map(async function(item, index){
      await generateImage(index, item);
@@ -186,6 +188,8 @@ document.getElementById('submitButton').addEventListener('click', async function
   //await generateImage(inputValue);
   //changeFruits(inputValue);
   alert("画像を変更しました");
+  flagGenerate=true;
+  addFruit();
 });
 
 
@@ -279,4 +283,7 @@ Events.on(engine, "collisionStart", (event) => {
   });
 });
 
-addFruit();
+
+if (flagGenerate){
+  changeFruits();
+}
