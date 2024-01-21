@@ -2,6 +2,7 @@ import { Bodies, Body, Engine, Events, Render, Runner, World } from "matter-js";
 import { FRUITS_BASE } from "./fruits";
 import "./dark.css";
 import config from './config.json';
+import { sleep } from "openai/core";
 
 const OPENAI_API_KEY = config.api_key;
 
@@ -292,10 +293,41 @@ document.getElementById('submitButton').addEventListener('click', async function
    console.log(items);
    items = items.replace(/>/g, "<");
    let itemsArray = items.split("<");
-   itemsArray = itemsArray.slice(0,2); // TODO: API制限回避のため，最初に5個，1分後にもう5個，というようにする
-   await Promise.all(itemsArray.map(async function(item, index){
+
+   let first_itemsArray = itemsArray.slice(0,5); // TODO: API制限回避のため，最初に5個，1分後にもう5個，というようにする
+   await Promise.all(first_itemsArray.map(async function(item, index){
      await generateImage(index, item);
    }));
+
+   setTimeout( async ()=>{
+        // 1秒後の処理
+        console.log("65秒後");
+        let second_itemsArray = itemsArray.slice(5,10); // TODO: API制限回避のため，最初に5個，1分後にもう5個，というようにする
+        console.log(second_itemsArray);
+        await Promise.all(second_itemsArray.map(async function(item, index){
+          await generateImage(index+5, item);
+        }));
+        changeFruits();
+        await loadAllImages();
+       flagGenerate=true;
+    }, 65000);
+
+    setTimeout( async ()=>{
+      // 1秒後の処理
+      console.log("130秒後");
+      let third_itemsArray = itemsArray.slice(10,11); // TODO: API制限回避のため，最初に5個，1分後にもう5個，というようにする
+      await Promise.all(third_itemsArray.map(async function(item, index){
+        await generateImage(index+10, item);
+      }));
+      changeFruits();
+      await loadAllImages();
+     flagGenerate=true;
+    }, 130000);
+
+
+   
+
+
    changeFruits();
    await loadAllImages();
   alert("画像を変更しました");
