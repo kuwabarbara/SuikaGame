@@ -318,7 +318,7 @@ document.getElementById('submitButton').addEventListener('click', async function
 
 
 window.onkeydown = (event) => {
-  if (disableAction) {
+  if (disableAction || !flagGenerate) {
     return;
   }
 
