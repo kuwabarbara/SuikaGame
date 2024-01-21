@@ -16,6 +16,8 @@ let images = ['base/0.png', 'base/1.png', 'base/02_grape.png',
 let vertCache = {};
 let textureCache = {};
 
+let flagGenerate = false;
+
 const engine = Engine.create();
 const render = Render.create({
   engine,
