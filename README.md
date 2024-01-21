@@ -1,20 +1,14 @@
-# Suika Game
+# アルティメットスイカゲーム
 
-スイカゲーム clone on Nintendo Switch
-
-<img src="shorts.gif" width="600px"/>
-
-<img src="result.png" width="400px"/>
-
-## Play Demo
-
-https://kairess.github.io/suika-game
+果物以外の様々なものでスイカゲームが遊べるように、生成AIを駆使して作成した自由度の高いゲームです。
 
 ## Run
 
-```
-git clone https://github.com/kairess/suika-game.git
+```bash
+git clone https://github.com/kuwabarbara/SuikaGame.git
 cd suika-game
+pip -r install requirements.txt
+python server.py
 npm install
 npm run dev
 ```
@@ -22,3 +16,4 @@ npm run dev
 ## Original code
 
 https://github.com/paulantoine2/suika
+https://github.com/kairess/suika-game.git
