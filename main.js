@@ -288,6 +288,9 @@ function createTexture(sourceCanvas, bounds) {
 
 
 document.getElementById('submitButton').addEventListener('click', async function() {
+  // ボタンを非表示にする
+  document.getElementById('submitButton').style.display = 'none';
+  document.getElementById("inputField").style.display = 'none';
   var inputValue = document.getElementById('inputField').value;
    await generateItems(inputValue);
    console.log(items);
@@ -378,6 +381,10 @@ window.onkeydown = (event) => {
         disableAction = false;
       }, 1000);
       break;
+
+    case "KeyR":
+      // ボタンを表示する
+      document.getElementById('submitButton').style.display = 'block';
   }
 }
 

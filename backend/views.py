@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 
 
-sizes = [71, 89, 99, 124, 139, 156, 177, 220, 259, 300, 350]
+sizes = [60, 80, 100, 120, 140, 160, 180, 220, 260, 300, 350]
 
 
 @app.route("/")
@@ -56,7 +56,7 @@ def transparent_image(image_path):
         img = cv2.Canny(img, 100, 200)
         kernel = np.ones((5, 5), np.uint8)
         img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel, iterations=3)
-        r = (0.05, 0.80)
+        r = (0.2, 0.7)
 
         height, width = img.shape[:2]
         base_area = height * width
