@@ -9,11 +9,14 @@ let FRUITS = FRUITS_BASE;
 
 let GeneratedImage="empty";
 let items="";
-let images = ['base/00_cherry.png', 'base/01_strawberry.png', 'base/02_grape.png',
- 'base/03_gyool.png', 'base/04_orange.png','base/05_apple.png', 'base/06_pear.png',
-  'base/07_peach.png', 'base/08_pineapple.png', 'base/09_melon.png','base/10_watermelon.png'];
+let images = ['base/0.png', 'base/1.png', 'base/02_grape.png',
+ 'base/3.png', 'base/4.png','base/5.png', 'base/6.png',
+  'base/7.png', 'base/8.png', 'base/9.png','base/10.png'];
 
-let flagGenerate=false;
+let vertCache = {};
+let textureCache = {};
+
+let flagGenerate = false;
 
 const engine = Engine.create();
 const render = Render.create({
@@ -68,19 +71,41 @@ function changeFruits() {
   });
 }
 
+function loadAllImages() {
+  return Promise.all(FRUITS.map(async (fruit, index) => {
+    let info =  await createEmojiInfo(fruit.name);
+      vertCache[index] = info.vert;
+      textureCache[index] = info.texture;
+  }));
+}
+
 function addFruit() {
   const index = Math.floor(Math.random() * 5);
   //let index = 0;
   const fruit = FRUITS[index];
-
-  const body = Bodies.circle(300, 50, fruit.radius, {
+  let body = null;
+  if (vertCache[index] === undefined) {
+    console.log('not cached');
+    body = Bodies.circle(300, 50, fruit.radius, {
+      index: index,
+      isSleeping: true,
+      render: {
+        sprite: { texture: `${fruit.name}` }
+      },
+      restitution: 0.2,
+    });
+  }
+  else {
+  body = Bodies.fromVertices(300, 50, vertCache[index], {
     index: index,
     isSleeping: true,
     render: {
-      sprite: { texture: `${fruit.name}` }
+        sprite: {
+            texture: textureCache[index]
+        }
     },
     restitution: 0.2,
-  });
+  })};
 
   currentBody = body;
   currentFruit = fruit;
@@ -91,7 +116,7 @@ function addFruit() {
 async function generateImage(index, inputValue){
       // APIリクエストのためのパラメータを設定します。
       const data = {
-        prompt: inputValue+", emoji, white background",
+        prompt: inputValue+", illustlation, emoji, white background",
         n: 1,
         size: "256x256"
       };
@@ -106,11 +131,14 @@ async function generateImage(index, inputValue){
         body: JSON.stringify(data) // リクエストボディ
       })
       .then(response => response.json()) // レスポンスをJSON形式で取得
-      .then(data => {
+      .then(async data => {
         console.log(data); // レスポンスデータをコンソールに表示
         let urls = data.data.map(obj => obj.url);
         console.log(urls[0]);
-        images[index] = urls[0];
+        await fetch("http://localhost:5000/download_image", 
+        {method: "POST", body: new URLSearchParams(
+          {url: urls[0],index: index}),
+        })
       })
       .catch(error => {
         console.error('Error:', error); // エラーが発生した場合はコンソールに表示
@@ -126,6 +154,7 @@ async function generateItems(genre){
         "role": "system",
         "content": "List 11 items belonging to a given genre in ascending order. \
         do not include anything other than items belonging to the genre. \
+        if genre is not specified, the default is fruit. \
         Example: Fruits. In this case, the smallest fruit is cherry, \
         and the largest is watermelon, so the order is\
         Cherry<Strawberry<Grapes<Orange<Persimmon<Apple<Pear<Peach<Pineapple<Melon<Watermelon"
@@ -173,20 +202,114 @@ async function generateItems(genre){
   
 }
 
+function alphaToWhite(data8U) {
+  for (let i = 0; i < data8U.length; i += 4) {
+      if (data8U[i + 3] == 0) {
+          data8U[i] = 255;
+          data8U[i + 1] = 255;
+          data8U[i + 2] = 255;
+          data8U[i + 3] = 255;
+      }
+  }
+}
+function createEmojiInfo(imagepath) {
+  return new Promise((resolve, reject) => {
+      var img = new Image();
+      img.src = imagepath; // 画像への相対パス
+
+      img.onload = function() {
+          var canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+
+          let source = cv.imread(canvas);
+          alphaToWhite(source.data);
+
+          let destC1 = new cv.Mat(canvas.height, canvas.width, cv.CV_8UC1);
+          let destC4 = new cv.Mat(canvas.height, canvas.width, cv.CV_8UC4);
+
+          cv.cvtColor(source, destC1, cv.COLOR_RGBA2GRAY);
+          cv.threshold(destC1, destC4, 254, 255, cv.THRESH_BINARY);
+          cv.bitwise_not(destC4, destC4);
+
+          let contours = new cv.MatVector();
+          let hierarchy = new cv.Mat();
+          cv.findContours(destC4, contours, hierarchy, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE, { x: 0, y: 0});
+          hierarchy.delete();
+          destC1.delete();
+          destC4.delete();
+          source.delete();
+
+          let points = [];
+          for (let i = 0; i < contours.size(); i++) {
+              let d = contours.get(i).data32S;
+              for (let j = 0; j < d.length; j++) {
+                  points.push(d[j]);
+              }
+          }
+          contours.delete();
+
+          if (points.length < 3) {
+              reject(new Error('Not enough points in contours.'));
+              return;
+          }
+
+          let _points = new cv.Mat(1, points.length / 2, cv.CV_32SC2);
+          let d = _points.data32S;
+
+          for (let i = 0; i < points.length; i++) {
+              d[i] = points[i];
+          }
+          let hull = new cv.Mat();
+          cv.convexHull(_points, hull);
+          _points.delete();
+
+          let vert = [];
+          d = hull.data32S;
+          for (let i = 0; i < d.length; i += 2) {
+              vert.push({ x: d[i], y: d[i + 1]});
+          }
+          hull.delete();
+
+          const bounds = Matter.Bounds.create(vert);
+          const texture = createTexture(canvas, bounds);
+
+          resolve({
+              vert: vert,
+              texture: texture
+          });
+      };
+
+      img.onerror = function() {
+          reject(new Error('Image failed to load.'));
+      };
+  });
+}
+
+function createTexture(sourceCanvas, bounds) {
+  let canvas = document.createElement('canvas');
+  canvas.width = bounds.max.x - bounds.min.x + 1;
+  canvas.height = bounds.max.y - bounds.min.y + 1;
+
+  canvas.getContext('2d').drawImage(sourceCanvas, bounds.min.x, bounds.min.y, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL();
+}
+
+
 document.getElementById('submitButton').addEventListener('click', async function() {
   var inputValue = document.getElementById('inputField').value;
    await generateItems(inputValue);
    console.log(items);
+   items = items.replace(/>/g, "<");
    let itemsArray = items.split("<");
-   itemsArray = itemsArray.slice(0,5); // TODO: API制限回避のため，最初に5個，1分後にもう5個，というようにする
-  // itemsArrayの中の要素全てをgenerateImageに入れて画像を生成する．promise.allを使う
+   itemsArray = itemsArray.slice(0,2); // TODO: API制限回避のため，最初に5個，1分後にもう5個，というようにする
    await Promise.all(itemsArray.map(async function(item, index){
      await generateImage(index, item);
    }));
    changeFruits();
-  
-  //await generateImage(inputValue);
-  //changeFruits(inputValue);
+   await loadAllImages();
   alert("画像を変更しました");
   flagGenerate=true;
   addFruit();
