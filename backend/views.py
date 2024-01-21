@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 
 
-sizes = [33, 48, 61, 69, 89, 114, 129, 156, 177, 220, 259]
+sizes = [71, 89, 99, 124, 139, 156, 177, 220, 259, 300, 350]
 
 
 @app.route("/")
@@ -25,10 +25,10 @@ def download_image():
             try:
                 urllib.request.urlretrieve(url, dst_path)
                 print("downloaded")
-                resize_image(dst_path, sizes[int(ind)])
-                print("resized")
                 transparent_image(dst_path)
                 print("transparented")
+                resize_image(dst_path, sizes[int(ind)])
+                print("resized")
                 return jsonify({"result": "OK"})
             except Exception as e:
                 print(e)
@@ -41,28 +41,40 @@ def download_image():
 # 画像を小さくする関数
 def resize_image(image_path, size):
     try:
-        img = cv2.imread(image_path)
-        img = cv2.resize(img, (size, size))
+        img = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+        img = cv2.resize(img, (size, size), interpolation=cv2.INTER_AREA)
         cv2.imwrite(image_path, img)
+
     except Exception as e:
         print(e)
 
 
-# 背景を透過する関数
+# 輪郭抽出して背景を透過する関数
 def transparent_image(image_path):
     try:
-        src = cv2.imread(image_path)
+        img = cv2.imread(image_path)
+        img = cv2.Canny(img, 100, 200)
+        kernel = np.ones((5, 5), np.uint8)
+        img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel, iterations=3)
+        r = (0.05, 0.80)
 
-        # Point 1: 白色部分に対応するマスク画像を生成
-        mask = np.all(src[:, :, :] == [255, 255, 255], axis=-1)
+        height, width = img.shape[:2]
+        base_area = height * width
 
-        # Point 2: 元画像をBGR形式からBGRA形式に変換
-        dst = cv2.cvtColor(src, cv2.COLOR_BGR2BGRA)
+        contours, hierarchy = cv2.findContours(
+            img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE
+        )
 
-        # Point3: マスク画像をもとに、白色部分を透明化
-        dst[mask, 3] = 0
+        mask = np.zeros(img.shape, dtype=np.uint8)
+        for cont in contours:
+            cont_area = cv2.contourArea(cont)
+            if cont_area >= base_area * r[0] and cont_area <= base_area * r[1]:
+                cv2.fillConvexPoly(mask, cont, color=255)
+        img = cv2.imread(image_path)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2RGBA)
+        mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGBA)
+        img[:, :, 3] = np.where(np.all(mask == [0, 0, 0, 255], axis=-1), 0, 255)
+        cv2.imwrite(image_path, img)
 
-        # png画像として出力
-        cv2.imwrite("dst.png", dst)
     except Exception as e:
         print(e)
