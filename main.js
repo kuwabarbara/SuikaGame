@@ -83,20 +83,8 @@ function addFruit() {
   const index = Math.floor(Math.random() * 5);
   //let index = 0;
   const fruit = FRUITS[index];
-  let body = null;
-  if (vertCache[index] === undefined) {
-    console.log('not cached');
-    body = Bodies.circle(300, 50, fruit.radius, {
-      index: index,
-      isSleeping: true,
-      render: {
-        sprite: { texture: `${fruit.name}` }
-      },
-      restitution: 0.2,
-    });
-  }
-  else {
-  body = Bodies.fromVertices(300, 50, vertCache[index], {
+  
+  const body = Bodies.fromVertices(300, 50, vertCache[index], {
     index: index,
     isSleeping: true,
     render: {
@@ -105,7 +93,7 @@ function addFruit() {
         }
     },
     restitution: 0.2,
-  })};
+  })
 
   currentBody = body;
   currentFruit = fruit;
