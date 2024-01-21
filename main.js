@@ -10,7 +10,7 @@ let FRUITS = FRUITS_BASE;
 
 let GeneratedImage="empty";
 let items="";
-let images = ['base/0.png', 'base/1.png', 'base/02_grape.png',
+let images = ['base/0.png', 'base/1.png', 'base/2.png',
  'base/3.png', 'base/4.png','base/5.png', 'base/6.png',
   'base/7.png', 'base/8.png', 'base/9.png','base/10.png'];
 
